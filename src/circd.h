@@ -24,7 +24,7 @@ typedef struct Client {
 	char* username;
 	char* realname;
 	unsigned int modes;
-	LinkedList channels; //@Channel
+	LinkedList channels; //@ChannelChannel
 	int socket;
 } Client;
 
@@ -32,8 +32,14 @@ typedef struct Channel {
 	char* name;
 	char* topic;
 	unsigned int modes;
-	LinkedList clients; //@Client
+	LinkedList clients; //@ChannelClient
 } Channel;
+
+typedef struct ChannelClient {
+	Client* client;
+	Channel* channel;
+	unsigned int modes;
+} ChannelClient;
 
 typedef struct ClientThreadArgs {
 	Server* server;
@@ -48,5 +54,9 @@ void* handle_client(void* args);
 void handle_handshake(char* msg, Client* client);
 void handle_message(char* msg, Client* client, Server* server);
 void client_host(char* dest, Client* client);
+void handle_join(char* channelName, Client* client, Server* server);
+void handle_part(char* channelName, char* partMessage, Client* client, Server* server);
+void handle_quit(char* quitMessage, Client* client, Server* server);
+void handle_privmsg(char* target, char* message, Client* client, Server* server);
 
 #endif

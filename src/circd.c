@@ -122,7 +122,7 @@ void handle_handshake(char* msg, Client* client) {
 
 		msg += 5;
 		int userLength = 0;
-		while(msg[userLength] != ' ') { userLength++; }
+		while(msg[userLength] != ' ') userLength++;
 		char* username = calloc(userLength + 1, sizeof(char));
 		strncpy(username, msg, userLength);
 		client->username = username;
@@ -148,27 +148,30 @@ void handle_handshake(char* msg, Client* client) {
 
 
 void handle_message(char* msg, Client* client, Server* server) {
-	char m[BUFFSIZE] = {0};
 	if(strncmp(msg, "PING ", 5) == 0) {
 		msg += 5;
+		char m[BUFFSIZE] = {0};
 		snprintf(m, BUFFSIZE, ":cdirc PONG %s\n", msg);
 
 	} else if(strncmp(msg, "JOIN ", 5) == 0) {
 		msg += 5;
-		
-		
+		handle_join(msg, client, server);
+
 	} else if(strncmp(msg, "PART ", 5) == 0) {
 		msg += 5;
 		
-		
+
 	} else if(strncmp(msg, "QUIT ", 5) == 0) {
 		msg += 5;
-		
-		
+
+
 	} else if(strncmp(msg, "PRIVMSG ", 8) == 0) {
 		msg += 8;
-		
-		
+		int targetLength = 0;
+		while(msg[targetLength] != ' ') targetLength++;
+		msg[targetLength + 1] = '\0';
+		handle_privmsg(msg, msg + targetLength + 2, client, server);
+
 	}
 }
 
@@ -178,5 +181,61 @@ void client_host(char* dest, Client* client) {
 }
 
 
+void handle_join(char* channelName, Client* client, Server* server) {
+	ChannelClient* channelClient = calloc(1, sizeof(ChannelClient));
+	channelClient->client = client;
+	ll_add_node(&client->channels, channelClient);
+
+	char m[BUFFSIZE] = {0};
+	char ch[BUFFSIZE] = {0};
+	client_host(ch, client);
+	snprintf(m, BUFFSIZE, ":%s JOIN %s\n", ch, channelName);
+
+	LinkedListNode* channelNext = server->channels.head;
+	while(channelNext) {
+		Channel* channel = (Channel *)channelNext->ptr;
+		if(strcmp(channel->name, channelName) == 0) {
+			channelClient->channel = channel;
+			ll_add_node(&channel->clients, channelClient);
+
+			LinkedListNode* clientNext = channel->clients.head;
+			while(clientNext) {
+				Client* targetClient = (Client *) ((ChannelClient *)clientNext->ptr)->client;
+				send(targetClient->socket, m, strlen(m), 0);
+				clientNext = clientNext->next;
+			}
+
+			return;
+		}
+
+		channelNext = channelNext->next;
+	}
+
+	Channel* channel = calloc(1, sizeof(Channel));
+	char* channelNameP = calloc(strlen(channelName) + 1, sizeof(char));
+	strncpy(channelNameP, channelName, strlen(channelName));
+	channel->name = channelNameP;
+	channelClient->channel = channel;
+	ll_add_node(&channel->clients, channelClient);
+	ll_add_node(&server->channels, channel);
+	// todo: set op permission
+	send(client->socket, m, strlen(m), 0);
+}
+
+
+void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
+
+}
+
+
 // todo: Mutexes
+// todo: client leave cleanup
 // todo: Don't let nick be picked if nick is in use already
+// todo: handle modes
+// todo: oper command
+// todo: kick/ban etc
+// todo: channel topic
+
+// note: no support for channel perms (invite/pass)
+// note: only single channel per join message supported
+// note: v little error handling (badly phrased messages etc)
