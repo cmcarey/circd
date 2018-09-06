@@ -14,8 +14,8 @@
 
 
 typedef struct Server {
-	LinkedList clients;
-	LinkedList channels;
+	LinkedList clients; //@Client
+	LinkedList channels; //@Channel
 	int socket;
 } Server;
 
@@ -24,6 +24,7 @@ typedef struct Client {
 	char* username;
 	char* realname;
 	unsigned int modes;
+	LinkedList channels; //@Channel
 	int socket;
 } Client;
 
@@ -31,6 +32,7 @@ typedef struct Channel {
 	char* name;
 	char* topic;
 	unsigned int modes;
+	LinkedList clients; //@Client
 } Channel;
 
 typedef struct ClientThreadArgs {
@@ -45,5 +47,6 @@ void accept_clients(Server* server);
 void* handle_client(void* args);
 void handle_handshake(char* msg, Client* client);
 void handle_message(char* msg, Client* client, Server* server);
+void client_host(char* dest, Client* client);
 
 #endif
