@@ -169,9 +169,9 @@ void handle_message(char* msg, Client* client, Server* server) {
 		msg += 8;
 		int targetLength = 0;
 		while(msg[targetLength] != ' ') targetLength++;
-		msg[targetLength + 1] = '\0';
+		msg[targetLength] = '\0';
 		handle_privmsg(msg, msg + targetLength + 2, client, server);
-
+		printf(":%s:%s:\n", msg, msg + targetLength + 2);
 	}
 }
 
@@ -252,7 +252,10 @@ void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
 		while(clientNext) {
 			ChannelClient* channelClient = (ChannelClient *) clientNext->ptr;
 			Client* targetClient = channelClient->client;
-			send(targetClient->socket, m, strlen(m), 0);
+
+			if (targetClient != client) {
+				send(targetClient->socket, m, strlen(m), 0);
+			}
 
 			clientNext = clientNext->next;
 		}
@@ -270,7 +273,9 @@ void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
 // todo: oper command
 // todo: kick/ban etc
 // todo: channel topic
+// todo: send names
 
 // note: no support for channel perms (invite/pass)
 // note: only single channel per join message supported
 // note: v little error handling (badly phrased messages etc)
+// note: does not send ping, only responds
