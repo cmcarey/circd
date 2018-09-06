@@ -1,6 +1,6 @@
 ### CIRCD
 
-A simple IRCd written in plain C.  Adheres loosely to (RFC 2812)[https://tools.ietf.org/html/rfc2812].
+A simple IRCd written in plain C.  Adheres loosely to [RFC 2812](https://tools.ietf.org/html/rfc2812).
 
 
 #### Compiling and running
