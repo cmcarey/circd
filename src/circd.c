@@ -264,18 +264,3 @@ void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
 		// send to a user
 	}
 }
-
-
-// todo: Mutexes
-// todo: client leave cleanup
-// todo: Don't let nick be picked if nick is in use already
-// todo: handle modes
-// todo: oper command
-// todo: kick/ban etc
-// todo: channel topic
-// todo: send names
-
-// note: no support for channel perms (invite/pass)
-// note: only single channel per join message supported
-// note: v little error handling (badly phrased messages etc)
-// note: does not send ping, only responds
