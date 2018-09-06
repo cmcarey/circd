@@ -200,7 +200,8 @@ void handle_join(char* channelName, Client* client, Server* server) {
 
 			LinkedListNode* clientNext = channel->clients.head;
 			while(clientNext) {
-				Client* targetClient = (Client *) ((ChannelClient *)clientNext->ptr)->client;
+				ChannelClient* targetChannelClient = (ChannelClient *)clientNext->ptr;
+				Client* targetClient = (Client *) targetChannelClient->client;
 				send(targetClient->socket, m, strlen(m), 0);
 				clientNext = clientNext->next;
 			}
@@ -224,7 +225,41 @@ void handle_join(char* channelName, Client* client, Server* server) {
 
 
 void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
+	if (target[0] == '#') {
+		// send to a channel
+		// first iterate through to see if user is in channel
+		Channel* channel;
+		LinkedListNode* channelNext = client->channels.head;
+		while (channelNext) {
+			ChannelClient* channelClient = (ChannelClient *) channelNext->ptr;
+			channel = channelClient->channel;
+			if(strcmp(channel->name, target) == 0) {
+				break;
+			}
+			channelNext = channelNext->next;
+		}
 
+		if (!channel) {
+			return;
+		}
+
+		char m[BUFFSIZE];
+		char t[BUFFSIZE];
+		client_host(t, client);
+		snprintf(m, BUFFSIZE, ":%s PRIVMSG %s :%s\n", t, target, msg);
+
+		LinkedListNode* clientNext = channel->clients.head;
+		while(clientNext) {
+			ChannelClient* channelClient = (ChannelClient *) clientNext->ptr;
+			Client* targetClient = channelClient->client;
+			send(targetClient->socket, m, strlen(m), 0);
+
+			clientNext = clientNext->next;
+		}
+
+	} else {
+		// send to a user
+	}
 }
 
 
