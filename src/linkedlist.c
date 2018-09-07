@@ -1,6 +1,6 @@
 #include "linkedlist.h"
 
-void ll_add_node(LinkedList* linkedList, void* ptr) {
+LinkedListNode* ll_add_node(LinkedList* linkedList, void* ptr) {
 	LinkedListNode* node = calloc(1, sizeof(LinkedListNode));
 	node->ptr = ptr;
 
@@ -12,4 +12,6 @@ void ll_add_node(LinkedList* linkedList, void* ptr) {
 		linkedList->head = node;
 		linkedList->tail = node;
 	}
+
+	return node;
 }

@@ -20,6 +20,7 @@ typedef struct Server {
 } Server;
 
 typedef struct Client {
+	LinkedListNode* server; //@Server->Clients
 	char* nick;
 	char* username;
 	char* realname;
@@ -29,6 +30,7 @@ typedef struct Client {
 } Client;
 
 typedef struct Channel {
+	LinkedListNode* server; //@Server->Channels;
 	char* name;
 	char* topic;
 	unsigned int modes;
@@ -37,7 +39,9 @@ typedef struct Channel {
 
 typedef struct ChannelClient {
 	Client* client;
+	LinkedListNode* clientNode; //@Client
 	Channel* channel;
+	LinkedListNode* channelNode; //@Channel
 	unsigned int modes;
 } ChannelClient;
 

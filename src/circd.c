@@ -61,7 +61,7 @@ void accept_clients(Server* server) {
 	Client* client = calloc(1, sizeof(Client));
 	client->socket = clientFD;
 
-	ll_add_node(&server->clients, client); // TODO: mutex this
+	client->server = ll_add_node(&server->clients, client);
 
 	ClientThreadArgs* args = calloc(1, sizeof(ClientThreadArgs));
 	args->server = server;
@@ -77,7 +77,7 @@ void accept_clients(Server* server) {
 
 void* handle_client(void* vargs) {
 	printf("Client connected\n");
-	ClientThreadArgs* args = (ClientThreadArgs *) vargs;
+	ClientThreadArgs* args = (ClientThreadArgs*) vargs;
 	Client* client = args->client;
 	Server* server = args->server;
 
@@ -85,7 +85,7 @@ void* handle_client(void* vargs) {
 		char m[BUFFSIZE] = {0};
 		ssize_t r = recv(client->socket, &m, sizeof(m), 0);
 		if (r == 0) {
-			// TODO: PERFORM CLIENT FREE
+			handle_quit("Left the server", client, server);
 			printf("Client disconnected\n");
 			pthread_exit(0);
 		}
@@ -159,19 +159,27 @@ void handle_message(char* msg, Client* client, Server* server) {
 
 	} else if(strncmp(msg, "PART ", 5) == 0) {
 		msg += 5;
+		int channelNameLength = 0;
+		while(msg[channelNameLength] != ' ' && channelNameLength < strlen(msg)) channelNameLength++;
+		if(channelNameLength == strlen(msg)) {
+			msg[channelNameLength] = '\0';
+			handle_part(msg, "Goodbye", client, server);
+		} else {
+			msg[channelNameLength] = '\0';
+			handle_part(msg, msg + channelNameLength + 2, client, server);
+		}
 		
 
 	} else if(strncmp(msg, "QUIT ", 5) == 0) {
 		msg += 5;
-
+		handle_quit(msg + 1, client, server);
 
 	} else if(strncmp(msg, "PRIVMSG ", 8) == 0) {
 		msg += 8;
 		int targetLength = 0;
-		while(msg[targetLength] != ' ') targetLength++;
+		while(msg[targetLength] != ' ' && targetLength < strlen(msg)) targetLength++;
 		msg[targetLength] = '\0';
 		handle_privmsg(msg, msg + targetLength + 2, client, server);
-		printf(":%s:%s:\n", msg, msg + targetLength + 2);
 	}
 }
 
@@ -184,7 +192,7 @@ void client_host(char* dest, Client* client) {
 void handle_join(char* channelName, Client* client, Server* server) {
 	ChannelClient* channelClient = calloc(1, sizeof(ChannelClient));
 	channelClient->client = client;
-	ll_add_node(&client->channels, channelClient);
+	channelClient->clientNode = ll_add_node(&client->channels, channelClient);
 
 	char m[BUFFSIZE] = {0};
 	char ch[BUFFSIZE] = {0};
@@ -193,18 +201,11 @@ void handle_join(char* channelName, Client* client, Server* server) {
 
 	LinkedListNode* channelNext = server->channels.head;
 	while(channelNext) {
-		Channel* channel = (Channel *)channelNext->ptr;
+		Channel* channel = (Channel*) channelNext->ptr;
 		if(strcmp(channel->name, channelName) == 0) {
 			channelClient->channel = channel;
-			ll_add_node(&channel->clients, channelClient);
-
-			LinkedListNode* clientNext = channel->clients.head;
-			while(clientNext) {
-				ChannelClient* targetChannelClient = (ChannelClient *)clientNext->ptr;
-				Client* targetClient = (Client *) targetChannelClient->client;
-				send(targetClient->socket, m, strlen(m), 0);
-				clientNext = clientNext->next;
-			}
+			channelClient->channelNode = ll_add_node(&channel->clients, channelClient);
+			message_channel(m, channel, client, true);
 
 			return;
 		}
@@ -216,11 +217,80 @@ void handle_join(char* channelName, Client* client, Server* server) {
 	char* channelNameP = calloc(strlen(channelName) + 1, sizeof(char));
 	strncpy(channelNameP, channelName, strlen(channelName));
 	channel->name = channelNameP;
+	channel->server = ll_add_node(&server->channels, channel);
 	channelClient->channel = channel;
-	ll_add_node(&channel->clients, channelClient);
-	ll_add_node(&server->channels, channel);
+	channelClient->channelNode = ll_add_node(&channel->clients, channelClient);
 	// todo: set op permission
 	send(client->socket, m, strlen(m), 0);
+}
+
+
+void handle_part(char* channelName, char* partMessage, Client* client, Server* server) {
+	Channel* channel;
+	ChannelClient* channelClient;
+	LinkedListNode* channelNext = client->channels.head;
+	while (channelNext) {
+		channelClient = (ChannelClient*) channelNext->ptr;
+		channel = channelClient->channel;
+		if(strcmp(channel->name, channelName) == 0) {
+			break;
+		}
+		channelNext = channelNext->next;
+	}
+
+	if (!channel) {
+		return;
+	}
+
+	char m[BUFFSIZE] = {0};
+	char t[BUFFSIZE] = {0};
+	client_host(t, client);
+	snprintf(m, BUFFSIZE, ":%s PART %s :%s\n", t, channelName, partMessage);
+	message_channel(m, channel, client, true);
+
+	if (client->channels.head == channelClient->clientNode) {
+		client->channels.head = channelClient->clientNode->next;
+	}
+	if (client->channels.tail == channelClient->clientNode) {
+		client->channels.tail = channelClient->clientNode->prev;
+	}
+	if (channelClient->clientNode->prev) {
+		channelClient->clientNode->prev->next = channelClient->clientNode->next;
+	}
+	if (channelClient->clientNode->next) {
+		channelClient->clientNode->next->prev = channelClient->clientNode->prev;
+	}
+	if (channel->clients.head == channelClient->channelNode) {
+		channel->clients.head = channelClient->channelNode->next;
+	}
+	if (channel->clients.tail == channelClient->channelNode) {
+		channel->clients.tail = channelClient->channelNode->prev;
+	}
+	if (channelClient->channelNode->prev) {
+		channelClient->channelNode->prev->next = channelClient->channelNode->next;
+	}
+	if (channelClient->channelNode->next) {
+		channelClient->channelNode->next->prev = channelClient->channelNode->prev;
+	}
+
+	free(channelClient->clientNode);
+	free(channelClient->channelNode);
+	free(channelClient);
+}
+
+
+void handle_quit(char* quitMessage, Client* client, Server* server) {
+	char m[BUFFSIZE] = {0};
+	char t[BUFFSIZE] = {0};
+	client_host(t, client);
+	snprintf(m, BUFFSIZE, ":%s QUIT :%s\n", t, quitMessage);
+
+	LinkedListNode* channelNext = client->channels.head;
+	while (channelNext) {
+		channelClient* channelClient = (ChannelClient*) channelNext->ptr;
+		Channel* channel = channelClient->channel;
+		channelNext = channelNext->next;
+	}
 }
 
 
@@ -231,7 +301,7 @@ void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
 		Channel* channel;
 		LinkedListNode* channelNext = client->channels.head;
 		while (channelNext) {
-			ChannelClient* channelClient = (ChannelClient *) channelNext->ptr;
+			ChannelClient* channelClient = (ChannelClient*) channelNext->ptr;
 			channel = channelClient->channel;
 			if(strcmp(channel->name, target) == 0) {
 				break;
@@ -243,24 +313,28 @@ void handle_privmsg(char* target, char* msg, Client* client, Server* server) {
 			return;
 		}
 
-		char m[BUFFSIZE];
-		char t[BUFFSIZE];
+		char m[BUFFSIZE] = {0};
+		char t[BUFFSIZE] = {0};
 		client_host(t, client);
 		snprintf(m, BUFFSIZE, ":%s PRIVMSG %s :%s\n", t, target, msg);
-
-		LinkedListNode* clientNext = channel->clients.head;
-		while(clientNext) {
-			ChannelClient* channelClient = (ChannelClient *) clientNext->ptr;
-			Client* targetClient = channelClient->client;
-
-			if (targetClient != client) {
-				send(targetClient->socket, m, strlen(m), 0);
-			}
-
-			clientNext = clientNext->next;
-		}
+		message_channel(m, channel, client, false);
 
 	} else {
 		// send to a user
+	}
+}
+
+
+void message_channel(char* msg, Channel* channel, Client* client, bool includeSender) {
+	LinkedListNode* clientNext = channel->clients.head;
+	while(clientNext) {
+		ChannelClient* channelClient = (ChannelClient*) clientNext->ptr;
+		Client* targetClient = channelClient->client;
+
+		if (includeSender || targetClient != client) {
+			send(targetClient->socket, msg, strlen(msg), 0);
+		}
+
+		clientNext = clientNext->next;
 	}
 }

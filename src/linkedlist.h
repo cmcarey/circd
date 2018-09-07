@@ -16,6 +16,6 @@ typedef struct LinkedListNode {
 } LinkedListNode;
 
 
-void ll_add_node(LinkedList* linkedList, void* ptr);
+LinkedListNode* ll_add_node(LinkedList* linkedList, void* ptr);
 
 #endif
