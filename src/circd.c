@@ -85,7 +85,9 @@ void* handle_client(void* vargs) {
 		char m[BUFFSIZE] = {0};
 		ssize_t r = recv(client->socket, &m, sizeof(m), 0);
 		if (r == 0) {
-			handle_quit("Left the server", client, server);
+			if (client->nick && client->username && client->realname) {
+				handle_quit("Left the server", client, server);
+			}
 			printf("Client disconnected\n");
 			pthread_exit(0);
 		}
@@ -248,33 +250,9 @@ void handle_part(char* channelName, char* partMessage, Client* client, Server* s
 	snprintf(m, BUFFSIZE, ":%s PART %s :%s\n", t, channelName, partMessage);
 	message_channel(m, channel, client, true);
 
-	if (client->channels.head == channelClient->clientNode) {
-		client->channels.head = channelClient->clientNode->next;
-	}
-	if (client->channels.tail == channelClient->clientNode) {
-		client->channels.tail = channelClient->clientNode->prev;
-	}
-	if (channelClient->clientNode->prev) {
-		channelClient->clientNode->prev->next = channelClient->clientNode->next;
-	}
-	if (channelClient->clientNode->next) {
-		channelClient->clientNode->next->prev = channelClient->clientNode->prev;
-	}
-	if (channel->clients.head == channelClient->channelNode) {
-		channel->clients.head = channelClient->channelNode->next;
-	}
-	if (channel->clients.tail == channelClient->channelNode) {
-		channel->clients.tail = channelClient->channelNode->prev;
-	}
-	if (channelClient->channelNode->prev) {
-		channelClient->channelNode->prev->next = channelClient->channelNode->next;
-	}
-	if (channelClient->channelNode->next) {
-		channelClient->channelNode->next->prev = channelClient->channelNode->prev;
-	}
 
-	free(channelClient->clientNode);
-	free(channelClient->channelNode);
+	ll_delete_node(&client->channels, channelClient->clientNode);
+	ll_delete_node(&channel->clients, channelClient->channelNode);
 	free(channelClient);
 }
 
@@ -287,10 +265,22 @@ void handle_quit(char* quitMessage, Client* client, Server* server) {
 
 	LinkedListNode* channelNext = client->channels.head;
 	while (channelNext) {
-		channelClient* channelClient = (ChannelClient*) channelNext->ptr;
+		ChannelClient* channelClient = (ChannelClient*) channelNext->ptr;
 		Channel* channel = channelClient->channel;
+		message_channel(m, channel, client, false);
+		ll_delete_node(&client->channels, channelClient->clientNode);
+		ll_delete_node(&channel->clients, channelClient->channelNode);
+		free(channelClient);
 		channelNext = channelNext->next;
 	}
+
+	ll_delete_node(&server->clients, client->server);
+	free(client->nick);
+	free(client->username);
+	free(client->realname);
+	free(client);
+	close(client->socket);
+	pthread_exit(0);
 }
 
 

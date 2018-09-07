@@ -62,5 +62,6 @@ void handle_join(char* channelName, Client* client, Server* server);
 void handle_part(char* channelName, char* partMessage, Client* client, Server* server);
 void handle_quit(char* quitMessage, Client* client, Server* server);
 void handle_privmsg(char* target, char* message, Client* client, Server* server);
+void message_channel(char* msg, Channel* channel, Client* client, bool includeSender);
 
 #endif

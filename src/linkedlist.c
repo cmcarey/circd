@@ -15,3 +15,20 @@ LinkedListNode* ll_add_node(LinkedList* linkedList, void* ptr) {
 
 	return node;
 }
+
+
+void ll_delete_node(LinkedList* linkedList, LinkedListNode* node) {
+	if (node->prev) {
+		node->prev->next = node->next;
+	}
+	if (node->next) {
+		node->next->prev = node->prev;
+	}
+	if (linkedList->head == node) {
+		linkedList->head = node->next;
+	}
+	if (linkedList->tail == node) {
+		linkedList->tail = node->prev;
+	}
+	free(node);
+}

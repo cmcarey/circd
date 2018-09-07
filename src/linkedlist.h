@@ -17,5 +17,6 @@ typedef struct LinkedListNode {
 
 
 LinkedListNode* ll_add_node(LinkedList* linkedList, void* ptr);
+void ll_delete_node(LinkedList* linkedList, LinkedListNode* node);
 
 #endif
