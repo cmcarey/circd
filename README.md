@@ -13,6 +13,17 @@ $ ./circd
 Runs on port 6667 by default, hardcoded as a `#DEFINE` in `circd.c`.  TLS not supported with no plans to do so - run behind a TLS terminator like [Hitch](https://hitch-tls.org/).
 
 
+#### Example
+
+Connected with Weechat and another test client:
+
+![](https://vw.chancemcarey.com/Aik4aevu0e.png)
+
+Connected with two netcat clients:
+
+![](https://vw.chancemcarey.com/Fai2ue1Aeh.png)
+
+
 #### TODOs
 
 - Mutexes to prevent race conditions
