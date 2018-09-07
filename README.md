@@ -10,7 +10,7 @@ $ make
 $ ./circd
 ```
 
-Runs on port 6667 by default, hardcoded as a `#DEFINE` in `circd.c`.  TLS not supported with no plans to do so - run behind a TLS terminator like [Hitch](https://hitch-tls.org/);
+Runs on port 6667 by default, hardcoded as a `#DEFINE` in `circd.c`.  TLS not supported with no plans to do so - run behind a TLS terminator like [Hitch](https://hitch-tls.org/).
 
 
 #### TODOs
