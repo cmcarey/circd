@@ -26,7 +26,7 @@ Connected with two netcat clients:
 
 #### TODOs
 
-- Mutexes to prevent race conditions
+- Mutexes to prevent race conditions - currently quite unsafe
 - Don't let nick be picked if nick is in use already
 - Handle modes (channel/client/client in channel)
 - Oper command
@@ -43,5 +43,5 @@ Connected with two netcat clients:
 
 - No support for channel perms (invite/pass)
 - Only single channel per join message supported
-- Very little error handling (badly phrased messages etc)
+- Very little error handling (badly phrased messages etc - most will crash)
 - Does not send ping, only responds
